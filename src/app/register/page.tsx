@@ -10,36 +10,50 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     setError("");
     setSuccess("");
+    setLoading(true);
+
+    if (!displayName || !email || !password) {
+      setError("Todos los campos son obligatorios.");
+      setLoading(false);
+      return;
+    }
 
     // 1️⃣ Crear usuario en auth
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
 
     if (signUpError) {
       setError(signUpError.message);
+      setLoading(false);
       return;
     }
 
-    // 2️⃣ Insertar datos en tabla profiles
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert([
-        {
-          id: data.user?.id,
-          email,
-          display_name: displayName,
-          role: "estudiante", // por defecto
-        },
-      ]);
+    // 2️⃣ Insertar en profiles usando el ID que creó auth
+    if (!authData.user) {
+      setError("No se pudo crear el usuario.");
+      setLoading(false);
+      return;
+    }
+
+    const { error: profileError } = await supabase.from("profiles").insert([
+      {
+        id: authData.user.id,
+        email,
+        display_name: displayName,
+        role: "estudiante",
+      },
+    ]);
 
     if (profileError) {
       setError(profileError.message);
+      setLoading(false);
       return;
     }
 
@@ -47,14 +61,17 @@ export default function RegisterPage() {
     setDisplayName("");
     setEmail("");
     setPassword("");
+    setLoading(false);
   };
 
   return (
     <div className="container">
       <div className="card">
         <h1>Registrarse</h1>
+
         {error && <p style={{ color: "red" }}>{error}</p>}
         {success && <p style={{ color: "green" }}>{success}</p>}
+
         <input
           type="text"
           placeholder="Nombre"
@@ -73,7 +90,11 @@ export default function RegisterPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button onClick={handleRegister}>Crear Cuenta</button>
+
+        <button onClick={handleRegister} disabled={loading} className="cta-button">
+          {loading ? "Creando..." : "Crear Cuenta"}
+        </button>
+
         <p>
           ¿Ya tienes cuenta? <Link href="/login" className="link">Inicia Sesión</Link>
         </p>
