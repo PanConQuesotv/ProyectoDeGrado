@@ -22,7 +22,7 @@ export default function AdminPage() {
   const [newClassName, setNewClassName] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const roles = ["estudiante", "teacher", "admin"];
+  const roles = ["Estudiante", "Docente", "Administador"];
 
   const fetchUsers = async () => {
     const { data, error } = await supabase.from("profiles").select("*");
