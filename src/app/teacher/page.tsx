@@ -18,16 +18,46 @@ interface Assignment {
   id: string;
   title: string;
   class_id: string;
+  image_url?: string;
+  attempts?: number;
+  problem_description?: string;
+  correct_answer?: string;
+}
+
+interface StudentResponse {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  response: string;
+  is_correct: boolean;
+  student_name: string;
 }
 
 export default function TeacherPage() {
+  // ===== States =====
   const [classes, setClasses] = useState<Class[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  // Crear clase
   const [newClassName, setNewClassName] = useState("");
-  const [newAssignmentTitle, setNewAssignmentTitle] = useState("");
+
+  // Crear asignación
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [newAssignment, setNewAssignment] = useState<Assignment>({
+    id: "",
+    title: "",
+    class_id: "",
+    image_url: "",
+    attempts: 1,
+    problem_description: "",
+    correct_answer: "",
+  });
+
+  // Respuestas de estudiantes
+  const [studentResponses, setStudentResponses] = useState<StudentResponse[]>([]);
+  const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null);
 
   // ===== Fetch data =====
   const fetchClasses = async () => {
@@ -56,6 +86,26 @@ export default function TeacherPage() {
     else setAssignments(data);
   };
 
+  const fetchStudentResponses = async () => {
+    if (!selectedAssignment) return setStudentResponses([]);
+    const { data, error } = await supabase
+      .from("student_responses")
+      .select(`
+        *,
+        student:student_id (display_name)
+      `)
+      .eq("assignment_id", selectedAssignment);
+
+    if (error) console.log(error);
+    else {
+      const responses: StudentResponse[] = data.map((r: any) => ({
+        ...r,
+        student_name: r.student.display_name,
+      }));
+      setStudentResponses(responses);
+    }
+  };
+
   useEffect(() => {
     fetchClasses();
     fetchUsers();
@@ -63,7 +113,13 @@ export default function TeacherPage() {
 
   useEffect(() => {
     fetchAssignments();
+    setSelectedAssignment(null);
+    setStudentResponses([]);
   }, [selectedClass]);
+
+  useEffect(() => {
+    fetchStudentResponses();
+  }, [selectedAssignment]);
 
   // ===== Actions =====
   const createClass = async () => {
@@ -92,13 +148,21 @@ export default function TeacherPage() {
   };
 
   const createAssignment = async () => {
-    if (!selectedClass || !newAssignmentTitle) return;
+    if (!selectedClass || !newAssignment.title) return;
     const { error } = await supabase.from("assignments").insert([
-      { class_id: selectedClass, title: newAssignmentTitle },
+      { ...newAssignment, class_id: selectedClass },
     ]);
     if (error) console.log(error);
     else {
-      setNewAssignmentTitle("");
+      setNewAssignment({
+        id: "",
+        title: "",
+        class_id: "",
+        image_url: "",
+        attempts: 1,
+        problem_description: "",
+        correct_answer: "",
+      });
       fetchAssignments();
     }
   };
@@ -161,20 +225,27 @@ export default function TeacherPage() {
     color: "#000",
   };
 
+  const inputStyle: React.CSSProperties = {
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    marginRight: "8px",
+    width: "200px",
+  };
+
   return (
     <div style={containerStyle}>
-      <h1 style={{ color: "#fff" }}>Panel de Teacher</h1>
+      <h1 style={{ color: "#fff", marginBottom: "20px" }}>Panel Docente</h1>
 
       {/* ===== Crear Clase ===== */}
       <div style={cardStyle}>
         <h2>Crear Clase</h2>
         <input
-          className="cta-button"
           type="text"
           placeholder="Nombre de la clase"
           value={newClassName}
           onChange={(e) => setNewClassName(e.target.value)}
-          style={{ marginRight: "8px" }}
+          style={inputStyle}
         />
         <button className="cta-button" onClick={createClass}>
           Crear Clase
@@ -215,21 +286,60 @@ export default function TeacherPage() {
         </button>
       </div>
 
-      {/* ===== Asignaciones ===== */}
+      {/* ===== Crear Asignación ===== */}
       <div style={cardStyle}>
-        <h2>Asignaciones</h2>
+        <h2>Crear Asignación</h2>
         <input
-          className="cta-button"
+          style={inputStyle}
           type="text"
-          placeholder="Nombre de la asignación"
-          value={newAssignmentTitle}
-          onChange={(e) => setNewAssignmentTitle(e.target.value)}
-          style={{ marginRight: "8px" }}
+          placeholder="Título"
+          value={newAssignment.title}
+          onChange={(e) =>
+            setNewAssignment({ ...newAssignment, title: e.target.value })
+          }
+        />
+        <input
+          style={inputStyle}
+          type="text"
+          placeholder="Imagen URL (RA)"
+          value={newAssignment.image_url}
+          onChange={(e) =>
+            setNewAssignment({ ...newAssignment, image_url: e.target.value })
+          }
+        />
+        <input
+          style={inputStyle}
+          type="number"
+          placeholder="Intentos"
+          value={newAssignment.attempts}
+          onChange={(e) =>
+            setNewAssignment({ ...newAssignment, attempts: Number(e.target.value) })
+          }
+        />
+        <input
+          style={inputStyle}
+          type="text"
+          placeholder="Situación problema"
+          value={newAssignment.problem_description}
+          onChange={(e) =>
+            setNewAssignment({ ...newAssignment, problem_description: e.target.value })
+          }
+        />
+        <input
+          style={inputStyle}
+          type="text"
+          placeholder="Respuesta correcta (Código G)"
+          value={newAssignment.correct_answer}
+          onChange={(e) =>
+            setNewAssignment({ ...newAssignment, correct_answer: e.target.value })
+          }
         />
         <button className="cta-button" onClick={createAssignment}>
           Crear Asignación
         </button>
 
+        {/* Lista de Asignaciones */}
+        <h3 style={{ marginTop: "20px" }}>Asignaciones Existentes</h3>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -248,12 +358,57 @@ export default function TeacherPage() {
                   >
                     Borrar
                   </button>
+                  <button
+                    className="cta-button"
+                    onClick={() => setSelectedAssignment(a.id)}
+                    style={{ marginLeft: "8px" }}
+                  >
+                    Ver Respuestas
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* ===== Respuestas de Estudiantes ===== */}
+      {selectedAssignment && (
+        <div style={cardStyle}>
+          <h2>Respuestas de Estudiantes</h2>
+          <select
+            style={selectStyle}
+            value={selectedAssignment}
+            onChange={(e) => setSelectedAssignment(e.target.value)}
+          >
+            <option value="">Selecciona Asignación</option>
+            {assignments.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.title}
+              </option>
+            ))}
+          </select>
+
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Estudiante</th>
+                <th style={thStyle}>Respuesta</th>
+                <th style={thStyle}>Correcta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentResponses.map((r) => (
+                <tr key={r.id}>
+                  <td style={tdStyle}>{r.student_name}</td>
+                  <td style={tdStyle}>{r.response}</td>
+                  <td style={tdStyle}>{r.is_correct ? "✅" : "❌"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
