@@ -22,6 +22,7 @@ interface Assignment {
   problem_description: string;
   correct_answer: string;
   image?: File | null;
+  image_url?: string;
 }
 
 export default function TeacherPage() {
@@ -127,8 +128,8 @@ export default function TeacherPage() {
   };
 
   const createAssignment = async () => {
-    if (!selectedClass || !newAssignment.title)
-      return alert("Selecciona clase y agrega un título.");
+    if (!newAssignment.title || !newAssignment.problem_description || !selectedClass)
+      return alert("Completa todos los campos y selecciona la clase.");
 
     let image_url = null;
     if (newAssignment.image) {
@@ -148,10 +149,8 @@ export default function TeacherPage() {
       },
     ]);
 
-    if (error) {
-      console.log(error);
-      alert("Error creando la asignación: " + error.message);
-    } else {
+    if (error) console.log(error);
+    else {
       alert("Asignación creada correctamente");
       setNewAssignment({
         title: "",
@@ -215,6 +214,7 @@ export default function TeacherPage() {
     borderRadius: "6px",
     border: "1px solid #ccc",
     marginRight: "8px",
+    marginBottom: "8px",
     background: "#fff",
     color: "#000",
   };
@@ -232,7 +232,7 @@ export default function TeacherPage() {
     <div style={containerStyle}>
       <h1>Panel Docente</h1>
 
-      {/* ===== Crear Clase ===== */}
+      {/* Crear Clase */}
       <div style={cardStyle}>
         <h2>Crear Clase</h2>
         <input
@@ -247,7 +247,7 @@ export default function TeacherPage() {
         </button>
       </div>
 
-      {/* ===== Añadir Participante ===== */}
+      {/* Añadir Participante */}
       <div style={cardStyle}>
         <h2>Añadir Participante</h2>
         <select
@@ -262,7 +262,6 @@ export default function TeacherPage() {
             </option>
           ))}
         </select>
-
         <select
           style={selectStyle}
           value={selectedUser || ""}
@@ -275,15 +274,27 @@ export default function TeacherPage() {
             </option>
           ))}
         </select>
-
         <button className="cta-button" onClick={addParticipant}>
           Añadir
         </button>
       </div>
 
-      {/* ===== Asignaciones ===== */}
+      {/* Crear Asignación */}
       <div style={cardStyle}>
-        <h2>Asignaciones</h2>
+        <h2>Crear Asignación</h2>
+        <select
+          style={selectStyle}
+          value={selectedClass || ""}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
+          <option value="">Selecciona Clase</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
         <input
           type="text"
           placeholder="Título de la asignación"
@@ -319,15 +330,21 @@ export default function TeacherPage() {
           }
           style={inputStyle}
         />
-        <input type="file" accept="image/*" onChange={handleImageChange} style={inputStyle} />
-
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          style={inputStyle}
+        />
         <button className="cta-button" onClick={createAssignment}>
           Crear Asignación
         </button>
 
+        {/* Lista de Asignaciones */}
         <table style={tableStyle}>
           <thead>
             <tr>
+              <th style={thStyle}>Clase</th>
               <th style={thStyle}>Título</th>
               <th style={thStyle}>Intentos</th>
               <th style={thStyle}>Acciones</th>
@@ -336,10 +353,16 @@ export default function TeacherPage() {
           <tbody>
             {assignments.map((a) => (
               <tr key={a.id}>
+                <td style={tdStyle}>
+                  {classes.find((c) => c.id === a.class_id)?.name}
+                </td>
                 <td style={tdStyle}>{a.title}</td>
                 <td style={tdStyle}>{a.attempts}</td>
                 <td style={tdStyle}>
-                  <button className="cta-button" onClick={() => deleteAssignment(a.id!)}>
+                  <button
+                    className="cta-button"
+                    onClick={() => deleteAssignment(a.id!)}
+                  >
                     Borrar
                   </button>
                 </td>
