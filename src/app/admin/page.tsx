@@ -12,7 +12,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 1️⃣ Traer usuarios y clases al cargar la página
   const fetchData = async () => {
     const { data: profiles } = await supabase.from("profiles").select("*");
     const { data: classData } = await supabase.from("classes").select("*");
@@ -24,28 +23,19 @@ export default function AdminPage() {
     fetchData();
   }, []);
 
-  // 2️⃣ Cambiar rol de un usuario
   const handleChangeRole = async (userId: string, newRole: string) => {
     setLoading(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: newRole })
-      .eq("id", userId);
+    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
     if (error) setMessage(error.message);
     else setMessage("Rol actualizado correctamente.");
     setLoading(false);
     fetchData();
   };
 
-  // 3️⃣ Crear clase
   const handleCreateClass = async () => {
     if (!newClassName) return;
     setLoading(true);
-    const { error } = await supabase.from("classes").insert([
-      {
-        name: newClassName,
-      },
-    ]);
+    const { error } = await supabase.from("classes").insert([{ name: newClassName }]);
     if (error) setMessage(error.message);
     else setMessage("Clase creada correctamente.");
     setNewClassName("");
@@ -53,46 +43,87 @@ export default function AdminPage() {
     fetchData();
   };
 
-  // 4️⃣ Añadir participante a clase
   const handleAddParticipant = async () => {
     if (!selectedClass || !selectedUserId) return;
     setLoading(true);
     const { error } = await supabase.from("class_participants").insert([
-      {
-        class_id: selectedClass,
-        user_id: selectedUserId,
-      },
+      { class_id: selectedClass, user_id: selectedUserId },
     ]);
     if (error) setMessage(error.message);
     else setMessage("Participante añadido correctamente.");
     setLoading(false);
   };
 
+  const inputStyle = {
+    padding: "8px 12px",
+    margin: "5px 0",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  const selectStyle = {
+    padding: "8px 12px",
+    margin: "5px 0",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  const tableStyle = {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginBottom: "20px",
+  };
+
+  const thStyle = {
+    borderBottom: "2px solid #ddd",
+    padding: "8px",
+    textAlign: "left",
+  };
+
+  const tdStyle = {
+    borderBottom: "1px solid #eee",
+    padding: "8px",
+  };
+
   return (
-    <div className="container">
-      <div className="card">
-        <h1>Panel de Admin</h1>
-        {message && <p style={{ color: "green" }}>{message}</p>}
+    <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 900,
+          background: "#fff",
+          padding: 25,
+          borderRadius: 12,
+          boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h1 style={{ textAlign: "center", marginBottom: 20 }}>Panel de Admin</h1>
+        {message && <p style={{ color: "green", textAlign: "center" }}>{message}</p>}
 
         <section>
           <h2>Usuarios</h2>
-          <table style={{ width: "100%", marginBottom: 20 }}>
+          <table style={tableStyle}>
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Cambiar Rol</th>
+                <th style={thStyle}>Nombre</th>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>Rol</th>
+                <th style={thStyle}>Cambiar Rol</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.display_name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.role}</td>
-                  <td>
+              {users.map((u, idx) => (
+                <tr key={u.id} style={{ backgroundColor: idx % 2 === 0 ? "#f9f9f9" : "#fff" }}>
+                  <td style={tdStyle}>{u.display_name}</td>
+                  <td style={tdStyle}>{u.email}</td>
+                  <td style={tdStyle}>{u.role}</td>
+                  <td style={tdStyle}>
                     <select
+                      style={selectStyle}
                       value={u.role}
                       onChange={(e) => handleChangeRole(u.id, e.target.value)}
                       disabled={loading}
@@ -115,8 +146,21 @@ export default function AdminPage() {
             placeholder="Nombre de la clase"
             value={newClassName}
             onChange={(e) => setNewClassName(e.target.value)}
+            style={inputStyle}
           />
-          <button onClick={handleCreateClass} disabled={loading}>
+          <button
+            onClick={handleCreateClass}
+            disabled={loading}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              background: "#0b2f26",
+              color: "#fff",
+              cursor: "pointer",
+              marginTop: 10,
+            }}
+          >
             Crear Clase
           </button>
         </section>
@@ -126,6 +170,7 @@ export default function AdminPage() {
           <select
             value={selectedClass || ""}
             onChange={(e) => setSelectedClass(e.target.value)}
+            style={selectStyle}
           >
             <option value="">Selecciona una clase</option>
             {classes.map((c) => (
@@ -138,6 +183,7 @@ export default function AdminPage() {
           <select
             value={selectedUserId || ""}
             onChange={(e) => setSelectedUserId(e.target.value)}
+            style={selectStyle}
           >
             <option value="">Selecciona un usuario</option>
             {users.map((u) => (
@@ -147,7 +193,19 @@ export default function AdminPage() {
             ))}
           </select>
 
-          <button onClick={handleAddParticipant} disabled={loading}>
+          <button
+            onClick={handleAddParticipant}
+            disabled={loading}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              background: "#0b2f26",
+              color: "#fff",
+              cursor: "pointer",
+              marginTop: 10,
+            }}
+          >
             Añadir
           </button>
         </section>
