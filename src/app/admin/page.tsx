@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [newClassName, setNewClassName] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const roles = ["estudiante", "teacher", "admin"];
 
   // Cargar usuarios
   const fetchUsers = async () => {
@@ -88,18 +89,21 @@ export default function AdminPage() {
 
   // ======= Estilos =======
   const containerStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "#0b2f26",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     padding: "20px",
     fontFamily: "Arial, sans-serif",
+    color: "#fff",
   };
 
   const cardStyle: React.CSSProperties = {
-    background: "#fff",
+    background: "rgba(255, 255, 255, 0.05)",
     padding: "20px",
     borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
     width: "90%",
     maxWidth: "900px",
     marginBottom: "20px",
@@ -112,32 +116,14 @@ export default function AdminPage() {
   };
 
   const thStyle: React.CSSProperties = {
-    borderBottom: "2px solid #ddd",
+    borderBottom: "2px solid rgba(255,255,255,0.2)",
     padding: "8px",
     textAlign: "left",
-    background: "#f4f4f4",
   };
 
   const tdStyle: React.CSSProperties = {
-    borderBottom: "1px solid #eee",
+    borderBottom: "1px solid rgba(255,255,255,0.1)",
     padding: "8px",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    padding: "8px",
-    marginRight: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: "8px 12px",
-    margin: "4px",
-    borderRadius: "6px",
-    border: "none",
-    cursor: "pointer",
-    backgroundColor: "#0b5ed7",
-    color: "#fff",
   };
 
   const selectStyle: React.CSSProperties = {
@@ -145,6 +131,8 @@ export default function AdminPage() {
     borderRadius: "6px",
     border: "1px solid #ccc",
     marginRight: "8px",
+    background: "#0b2f26",
+    color: "#fff",
   };
 
   return (
@@ -170,21 +158,17 @@ export default function AdminPage() {
                 <td style={tdStyle}>{u.email}</td>
                 <td style={tdStyle}>{u.role}</td>
                 <td style={tdStyle}>
-                  <button
-                    style={buttonStyle}
-                    onClick={() =>
-                      changeRole(
-                        u.id,
-                        u.role === "estudiante"
-                          ? "teacher"
-                          : u.role === "teacher"
-                          ? "admin"
-                          : "estudiante"
-                      )
-                    }
+                  <select
+                    style={selectStyle}
+                    value={u.role}
+                    onChange={(e) => changeRole(u.id, e.target.value)}
                   >
-                    Cambiar Rol
-                  </button>
+                    {roles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               </tr>
             ))}
@@ -196,13 +180,14 @@ export default function AdminPage() {
       <div style={cardStyle}>
         <h2>Crear Clase</h2>
         <input
-          style={inputStyle}
+          className="cta-button"
           type="text"
           placeholder="Nombre de la clase"
           value={newClassName}
           onChange={(e) => setNewClassName(e.target.value)}
+          style={{ marginRight: "8px" }}
         />
-        <button style={buttonStyle} onClick={createClass}>
+        <button className="cta-button" onClick={createClass}>
           Crear Clase
         </button>
       </div>
@@ -236,7 +221,7 @@ export default function AdminPage() {
           ))}
         </select>
 
-        <button style={buttonStyle} onClick={addParticipant}>
+        <button className="cta-button" onClick={addParticipant}>
           Añadir
         </button>
       </div>
