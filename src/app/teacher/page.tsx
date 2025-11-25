@@ -30,34 +30,22 @@ interface StudentResponse {
   student_id: string;
   response: string;
   is_correct: boolean;
-  student_name: string;
 }
 
 export default function TeacherPage() {
-  // ===== States =====
   const [classes, setClasses] = useState<Class[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-
-  // Crear clase
   const [newClassName, setNewClassName] = useState("");
-
-  // Crear asignación
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [newAssignment, setNewAssignment] = useState<Assignment>({
-    id: "",
     title: "",
-    class_id: "",
-    image_url: "",
     attempts: 1,
     problem_description: "",
     correct_answer: "",
   });
-
-  // Respuestas de estudiantes
-  const [studentResponses, setStudentResponses] = useState<StudentResponse[]>([]);
-  const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [responses, setResponses] = useState<StudentResponse[]>([]);
 
   // ===== Fetch data =====
   const fetchClasses = async () => {
@@ -86,24 +74,13 @@ export default function TeacherPage() {
     else setAssignments(data);
   };
 
-  const fetchStudentResponses = async () => {
-    if (!selectedAssignment) return setStudentResponses([]);
+  const fetchResponses = async (assignmentId: string) => {
     const { data, error } = await supabase
       .from("student_responses")
-      .select(`
-        *,
-        student:student_id (display_name)
-      `)
-      .eq("assignment_id", selectedAssignment);
-
+      .select("*")
+      .eq("assignment_id", assignmentId);
     if (error) console.log(error);
-    else {
-      const responses: StudentResponse[] = data.map((r: any) => ({
-        ...r,
-        student_name: r.student.display_name,
-      }));
-      setStudentResponses(responses);
-    }
+    else setResponses(data);
   };
 
   useEffect(() => {
@@ -113,13 +90,7 @@ export default function TeacherPage() {
 
   useEffect(() => {
     fetchAssignments();
-    setSelectedAssignment(null);
-    setStudentResponses([]);
   }, [selectedClass]);
-
-  useEffect(() => {
-    fetchStudentResponses();
-  }, [selectedAssignment]);
 
   // ===== Actions =====
   const createClass = async () => {
@@ -155,10 +126,7 @@ export default function TeacherPage() {
     if (error) console.log(error);
     else {
       setNewAssignment({
-        id: "",
         title: "",
-        class_id: "",
-        image_url: "",
         attempts: 1,
         problem_description: "",
         correct_answer: "",
@@ -174,6 +142,25 @@ export default function TeacherPage() {
       .eq("id", assignmentId);
     if (error) console.log(error);
     else fetchAssignments();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from("assignments-images")
+      .upload(fileName, file);
+
+    if (error) console.log(error);
+    else {
+      const url = supabase.storage
+        .from("assignments-images")
+        .getPublicUrl(fileName).data.publicUrl;
+      setNewAssignment({ ...newAssignment, image_url: url });
+    }
   };
 
   // ===== Styles =====
@@ -225,27 +212,20 @@ export default function TeacherPage() {
     color: "#000",
   };
 
-  const inputStyle: React.CSSProperties = {
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    marginRight: "8px",
-    width: "200px",
-  };
-
   return (
     <div style={containerStyle}>
-      <h1 style={{ color: "#fff", marginBottom: "20px" }}>Panel Docente</h1>
+      <h1 style={{ color: "#fff" }}>Panel Docente</h1>
 
       {/* ===== Crear Clase ===== */}
       <div style={cardStyle}>
         <h2>Crear Clase</h2>
         <input
+          className="cta-button"
           type="text"
           placeholder="Nombre de la clase"
           value={newClassName}
           onChange={(e) => setNewClassName(e.target.value)}
-          style={inputStyle}
+          style={{ marginRight: "8px" }}
         />
         <button className="cta-button" onClick={createClass}>
           Crear Clase
@@ -289,61 +269,67 @@ export default function TeacherPage() {
       {/* ===== Crear Asignación ===== */}
       <div style={cardStyle}>
         <h2>Crear Asignación</h2>
+        <select
+          style={selectStyle}
+          value={selectedClass || ""}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
+          <option value="">Selecciona Clase</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         <input
-          style={inputStyle}
           type="text"
-          placeholder="Título"
+          placeholder="Título de la asignación"
           value={newAssignment.title}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, title: e.target.value })
           }
+          style={{ marginRight: "8px" }}
         />
         <input
-          style={inputStyle}
-          type="text"
-          placeholder="Imagen URL (RA)"
-          value={newAssignment.image_url}
-          onChange={(e) =>
-            setNewAssignment({ ...newAssignment, image_url: e.target.value })
-          }
-        />
-        <input
-          style={inputStyle}
           type="number"
-          placeholder="Intentos"
+          placeholder="Número de intentos"
           value={newAssignment.attempts}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, attempts: Number(e.target.value) })
           }
+          style={{ width: "150px", marginRight: "8px" }}
         />
-        <input
-          style={inputStyle}
-          type="text"
+        <input type="file" onChange={handleFileUpload} style={{ marginRight: "8px" }} />
+        <textarea
           placeholder="Situación problema"
           value={newAssignment.problem_description}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, problem_description: e.target.value })
           }
+          style={{ width: "100%", marginTop: "8px" }}
         />
         <input
-          style={inputStyle}
           type="text"
-          placeholder="Respuesta correcta (Código G)"
+          placeholder="Respuesta correcta (código)"
           value={newAssignment.correct_answer}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, correct_answer: e.target.value })
           }
+          style={{ marginTop: "8px" }}
         />
-        <button className="cta-button" onClick={createAssignment}>
+        <button className="cta-button" onClick={createAssignment} style={{ marginTop: "8px" }}>
           Crear Asignación
         </button>
+      </div>
 
-        {/* Lista de Asignaciones */}
-        <h3 style={{ marginTop: "20px" }}>Asignaciones Existentes</h3>
+      {/* ===== Lista Asignaciones ===== */}
+      <div style={cardStyle}>
+        <h2>Asignaciones de la clase</h2>
         <table style={tableStyle}>
           <thead>
             <tr>
               <th style={thStyle}>Título</th>
+              <th style={thStyle}>Imagen RA</th>
               <th style={thStyle}>Acciones</th>
             </tr>
           </thead>
@@ -352,16 +338,16 @@ export default function TeacherPage() {
               <tr key={a.id}>
                 <td style={tdStyle}>{a.title}</td>
                 <td style={tdStyle}>
-                  <button
-                    className="cta-button"
-                    onClick={() => deleteAssignment(a.id)}
-                  >
+                  {a.image_url && <img src={a.image_url} width={50} />}
+                </td>
+                <td style={tdStyle}>
+                  <button className="cta-button" onClick={() => deleteAssignment(a.id)}>
                     Borrar
                   </button>
                   <button
                     className="cta-button"
-                    onClick={() => setSelectedAssignment(a.id)}
-                    style={{ marginLeft: "8px" }}
+                    onClick={() => fetchResponses(a.id)}
+                    style={{ marginLeft: "4px" }}
                   >
                     Ver Respuestas
                   </button>
@@ -372,23 +358,10 @@ export default function TeacherPage() {
         </table>
       </div>
 
-      {/* ===== Respuestas de Estudiantes ===== */}
-      {selectedAssignment && (
+      {/* ===== Respuestas Estudiantes ===== */}
+      {responses.length > 0 && (
         <div style={cardStyle}>
-          <h2>Respuestas de Estudiantes</h2>
-          <select
-            style={selectStyle}
-            value={selectedAssignment}
-            onChange={(e) => setSelectedAssignment(e.target.value)}
-          >
-            <option value="">Selecciona Asignación</option>
-            {assignments.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.title}
-              </option>
-            ))}
-          </select>
-
+          <h2>Respuestas Estudiantes</h2>
           <table style={tableStyle}>
             <thead>
               <tr>
@@ -398,13 +371,16 @@ export default function TeacherPage() {
               </tr>
             </thead>
             <tbody>
-              {studentResponses.map((r) => (
-                <tr key={r.id}>
-                  <td style={tdStyle}>{r.student_name}</td>
-                  <td style={tdStyle}>{r.response}</td>
-                  <td style={tdStyle}>{r.is_correct ? "✅" : "❌"}</td>
-                </tr>
-              ))}
+              {responses.map((r) => {
+                const student = users.find((u) => u.id === r.student_id);
+                return (
+                  <tr key={r.id}>
+                    <td style={tdStyle}>{student?.display_name}</td>
+                    <td style={tdStyle}>{r.response}</td>
+                    <td style={tdStyle}>{r.is_correct ? "Sí" : "No"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
