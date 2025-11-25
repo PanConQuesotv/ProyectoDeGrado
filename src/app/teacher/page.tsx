@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 interface Class {
@@ -16,31 +16,29 @@ interface User {
 
 interface Assignment {
   id?: string;
-  class_id?: string;
+  class_id: string;
   title: string;
+  image_url?: string;
   attempts: number;
   problem_description: string;
   correct_answer: string;
-  image?: File | null;
-  image_url?: string;
 }
 
 export default function TeacherPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<string>("");
   const [newClassName, setNewClassName] = useState("");
   const [newAssignment, setNewAssignment] = useState<Assignment>({
+    class_id: "",
     title: "",
     attempts: 1,
     problem_description: "",
     correct_answer: "",
-    image: null,
   });
-
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // ===== Fetch data =====
   const fetchClasses = async () => {
@@ -80,7 +78,7 @@ export default function TeacherPage() {
 
   // ===== Actions =====
   const createClass = async () => {
-    if (!newClassName) return alert("Escribe un nombre para la clase.");
+    if (!newClassName) return;
     const user = await supabase.auth.getUser();
     const { error } = await supabase.from("classes").insert([
       { name: newClassName, created_by: user.data.user?.id },
@@ -93,78 +91,71 @@ export default function TeacherPage() {
   };
 
   const addParticipant = async () => {
-    if (!selectedClass || !selectedUser) return alert("Selecciona clase y usuario.");
+    if (!selectedClass || !selectedUser) return;
     const { error } = await supabase.from("class_participants").insert([
       { class_id: selectedClass, user_id: selectedUser },
     ]);
     if (error) console.log(error);
     else {
-      setSelectedUser(null);
+      setSelectedUser("");
       alert("Participante añadido");
     }
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setNewAssignment({ ...newAssignment, image: e.target.files[0] });
-    }
-  };
-
-  const handleImageUpload = async (file: File) => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage
-      .from("assignments")
-      .upload(fileName, file);
-
-    if (error) {
-      console.log(error);
-      return null;
-    }
-    const { data: urlData } = supabase.storage
-      .from("assignments")
-      .getPublicUrl(fileName);
-    return urlData.publicUrl;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) setImageFile(e.target.files[0]);
   };
 
   const createAssignment = async () => {
-    if (!newAssignment.title || !newAssignment.problem_description || !selectedClass)
-      return alert("Completa todos los campos y selecciona la clase.");
+    if (!selectedClass || !newAssignment.title) {
+      alert("Selecciona la clase y pon un título");
+      return;
+    }
 
-    let image_url = null;
-    if (newAssignment.image) {
-      const url = await handleImageUpload(newAssignment.image);
-      if (!url) return alert("Error subiendo la imagen.");
-      image_url = url;
+    let image_url = "";
+    if (imageFile) {
+      const fileName = `assignment_${Date.now()}_${imageFile.name}`;
+      const { data, error } = await supabase.storage
+        .from("assignments")
+        .upload(fileName, imageFile);
+
+      if (error) {
+        console.log(error);
+        alert("Error subiendo la imagen");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("assignments")
+        .getPublicUrl(fileName);
+
+      image_url = urlData.publicUrl;
     }
 
     const { error } = await supabase.from("assignments").insert([
       {
+        ...newAssignment,
         class_id: selectedClass,
-        title: newAssignment.title,
-        attempts: newAssignment.attempts,
-        problem_description: newAssignment.problem_description,
-        correct_answer: newAssignment.correct_answer,
         image_url,
       },
     ]);
 
     if (error) console.log(error);
     else {
-      alert("Asignación creada correctamente");
       setNewAssignment({
+        class_id: "",
         title: "",
         attempts: 1,
         problem_description: "",
         correct_answer: "",
-        image: null,
       });
+      setImageFile(null);
       fetchAssignments();
     }
   };
 
-  const deleteAssignment = async (id: string) => {
-    const { error } = await supabase.from("assignments").delete().eq("id", id);
+  const deleteAssignment = async (assignmentId: string) => {
+    const { error } = await supabase.from("assignments").delete().eq("id", assignmentId);
     if (error) console.log(error);
     else fetchAssignments();
   };
@@ -195,7 +186,7 @@ export default function TeacherPage() {
   const tableStyle: React.CSSProperties = {
     width: "100%",
     borderCollapse: "collapse",
-    marginTop: "10px",
+    marginBottom: "20px",
   };
 
   const thStyle: React.CSSProperties = {
@@ -209,30 +200,29 @@ export default function TeacherPage() {
     padding: "8px",
   };
 
-  const selectStyle: React.CSSProperties = {
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    marginRight: "8px",
-    marginBottom: "8px",
-    background: "#fff",
-    color: "#000",
-  };
-
   const inputStyle: React.CSSProperties = {
     padding: "8px",
     borderRadius: "6px",
     border: "1px solid #ccc",
     marginRight: "8px",
     marginBottom: "8px",
-    width: "200px",
+    width: "100%",
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    marginRight: "8px",
+    background: "#fff",
+    color: "#000",
   };
 
   return (
     <div style={containerStyle}>
       <h1>Panel Docente</h1>
 
-      {/* Crear Clase */}
+      {/* ===== Crear Clase ===== */}
       <div style={cardStyle}>
         <h2>Crear Clase</h2>
         <input
@@ -247,12 +237,12 @@ export default function TeacherPage() {
         </button>
       </div>
 
-      {/* Añadir Participante */}
+      {/* ===== Añadir Participante ===== */}
       <div style={cardStyle}>
         <h2>Añadir Participante</h2>
         <select
           style={selectStyle}
-          value={selectedClass || ""}
+          value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
         >
           <option value="">Selecciona Clase</option>
@@ -262,9 +252,10 @@ export default function TeacherPage() {
             </option>
           ))}
         </select>
+
         <select
           style={selectStyle}
-          value={selectedUser || ""}
+          value={selectedUser}
           onChange={(e) => setSelectedUser(e.target.value)}
         >
           <option value="">Selecciona Usuario</option>
@@ -274,17 +265,19 @@ export default function TeacherPage() {
             </option>
           ))}
         </select>
+
         <button className="cta-button" onClick={addParticipant}>
           Añadir
         </button>
       </div>
 
-      {/* Crear Asignación */}
+      {/* ===== Crear Asignación ===== */}
       <div style={cardStyle}>
         <h2>Crear Asignación</h2>
+
         <select
           style={selectStyle}
-          value={selectedClass || ""}
+          value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
         >
           <option value="">Selecciona Clase</option>
@@ -296,81 +289,84 @@ export default function TeacherPage() {
         </select>
 
         <input
+          style={inputStyle}
           type="text"
           placeholder="Título de la asignación"
           value={newAssignment.title}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, title: e.target.value })
           }
-          style={inputStyle}
         />
+
         <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          style={{ marginBottom: "8px" }}
+        />
+
+        <input
+          style={inputStyle}
           type="number"
           placeholder="Número de intentos"
           value={newAssignment.attempts}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, attempts: Number(e.target.value) })
           }
-          style={inputStyle}
         />
+
         <textarea
           placeholder="Situación problema"
           value={newAssignment.problem_description}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, problem_description: e.target.value })
           }
-          style={{ ...inputStyle, width: "400px", height: "60px" }}
+          style={{ ...inputStyle, height: "80px" }}
         />
-        <input
-          type="text"
-          placeholder="Respuesta correcta (código)"
+
+        <textarea
+          placeholder="Respuesta correcta"
           value={newAssignment.correct_answer}
           onChange={(e) =>
             setNewAssignment({ ...newAssignment, correct_answer: e.target.value })
           }
-          style={inputStyle}
+          style={{ ...inputStyle, height: "60px" }}
         />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          style={inputStyle}
-        />
+
         <button className="cta-button" onClick={createAssignment}>
           Crear Asignación
         </button>
-
-        {/* Lista de Asignaciones */}
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Clase</th>
-              <th style={thStyle}>Título</th>
-              <th style={thStyle}>Intentos</th>
-              <th style={thStyle}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assignments.map((a) => (
-              <tr key={a.id}>
-                <td style={tdStyle}>
-                  {classes.find((c) => c.id === a.class_id)?.name}
-                </td>
-                <td style={tdStyle}>{a.title}</td>
-                <td style={tdStyle}>{a.attempts}</td>
-                <td style={tdStyle}>
-                  <button
-                    className="cta-button"
-                    onClick={() => deleteAssignment(a.id!)}
-                  >
-                    Borrar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
+
+      {/* ===== Asignaciones existentes ===== */}
+      {selectedClass && (
+        <div style={cardStyle}>
+          <h2>Asignaciones de la clase</h2>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Título</th>
+                <th style={thStyle}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((a) => (
+                <tr key={a.id}>
+                  <td style={tdStyle}>{a.title}</td>
+                  <td style={tdStyle}>
+                    <button
+                      className="cta-button"
+                      onClick={() => deleteAssignment(a.id!)}
+                    >
+                      Borrar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
