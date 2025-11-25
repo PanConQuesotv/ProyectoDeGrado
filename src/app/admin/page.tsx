@@ -24,14 +24,12 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const roles = ["estudiante", "teacher", "admin"];
 
-  // Cargar usuarios
   const fetchUsers = async () => {
     const { data, error } = await supabase.from("profiles").select("*");
     if (error) console.log(error);
     else setUsers(data);
   };
 
-  // Cargar clases
   const fetchClasses = async () => {
     const { data, error } = await supabase.from("classes").select("*");
     if (error) console.log(error);
@@ -43,7 +41,6 @@ export default function AdminPage() {
     fetchClasses();
   }, []);
 
-  // Cambiar rol de usuario
   const changeRole = async (userId: string, newRole: string) => {
     const { error } = await supabase
       .from("profiles")
@@ -53,7 +50,6 @@ export default function AdminPage() {
     else fetchUsers();
   };
 
-  // Crear clase
   const createClass = async () => {
     if (!newClassName) return;
     const user = await supabase.auth.getUser();
@@ -70,7 +66,6 @@ export default function AdminPage() {
     }
   };
 
-  // Añadir participante
   const addParticipant = async () => {
     if (!selectedClass || !selectedUser) return;
     const { error } = await supabase.from("class_participants").insert([
@@ -87,7 +82,7 @@ export default function AdminPage() {
     }
   };
 
-  // ======= Estilos =======
+  // ===== Estilos =====
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
     background: "#0b2f26",
@@ -96,17 +91,18 @@ export default function AdminPage() {
     alignItems: "center",
     padding: "20px",
     fontFamily: "Arial, sans-serif",
-    color: "#fff",
+    color: "#0b2f26",
   };
 
   const cardStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.05)",
+    background: "#fff",
     padding: "20px",
     borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
     width: "90%",
     maxWidth: "900px",
     marginBottom: "20px",
+    color: "#000",
   };
 
   const tableStyle: React.CSSProperties = {
@@ -116,13 +112,13 @@ export default function AdminPage() {
   };
 
   const thStyle: React.CSSProperties = {
-    borderBottom: "2px solid rgba(255,255,255,0.2)",
+    borderBottom: "2px solid #ccc",
     padding: "8px",
     textAlign: "left",
   };
 
   const tdStyle: React.CSSProperties = {
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
+    borderBottom: "1px solid #eee",
     padding: "8px",
   };
 
@@ -131,13 +127,13 @@ export default function AdminPage() {
     borderRadius: "6px",
     border: "1px solid #ccc",
     marginRight: "8px",
-    background: "#0b2f26",
-    color: "#fff",
+    background: "#fff",
+    color: "#000",
   };
 
   return (
     <div style={containerStyle}>
-      <h1>Panel de Administrador</h1>
+      <h1 style={{ color: "#fff" }}>Panel de Administrador</h1>
 
       {/* ===== Usuarios ===== */}
       <div style={cardStyle}>
