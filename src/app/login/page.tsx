@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,27 +13,40 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setError("");
 
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+    // 1️⃣ Login con Supabase
+    const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (loginError) {
-      setError(loginError.message);
+    if (loginError || !user) {
+      setError(loginError?.message || "Error al iniciar sesión");
       return;
     }
 
-    // Login exitoso → redirigir al dashboard o homepage
-    router.push("/");
+    // 2️⃣ Obtener perfil
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      setError(profileError.message);
+      return;
+    }
+
+    // 3️⃣ Redirigir según rol
+    if (profile.role === "admin") router.push("/admin");
+    else if (profile.role === "teacher") router.push("/teacher");
+    else router.push("/student");
   };
 
   return (
     <div className="container">
       <div className="card">
         <h1>Iniciar Sesión</h1>
-
         {error && <p style={{ color: "red" }}>{error}</p>}
-
         <input
           type="email"
           placeholder="Email"
@@ -47,15 +59,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-
-        <button onClick={handleLogin}>Login</button>
-
-        <p>
-          ¿No tienes cuenta?{" "}
-          <Link href="/register" className="link">
-            Regístrate
-          </Link>
-        </p>
+        <button onClick={handleLogin}>Iniciar Sesión</button>
       </div>
     </div>
   );
