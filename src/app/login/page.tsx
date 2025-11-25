@@ -37,8 +37,8 @@ export default function LoginPage() {
     }
 
     // 3️⃣ Redirigir según rol
-    if (profile.role === "admin") router.push("/admin");
-    else if (profile.role === "teacher") router.push("/teacher");
+    if (profile.role === "Administrador") router.push("/admin");
+    else if (profile.role === "Docente") router.push("/teacher");
     else router.push("/student");
   };
 
