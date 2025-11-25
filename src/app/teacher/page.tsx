@@ -50,7 +50,7 @@ export default function TeacherPage() {
     image_url: "",
   });
   const [studentResponses, setStudentResponses] = useState<StudentResponse[]>([]);
-  const [showResponses, setShowResponses] = useState<string | null>(null); // assignment id
+  const [showResponses, setShowResponses] = useState<string | null>(null);
 
   // ===== Fetch data =====
   const fetchClasses = async () => {
@@ -154,34 +154,21 @@ export default function TeacherPage() {
       alert("Selecciona una clase para la asignación");
       return;
     }
-    if (!newAssignment.id) {
-      // Crear nueva
-      const { error } = await supabase.from("assignments").insert([newAssignment]);
-      if (error) console.log(error);
-    } else {
-      // Editar existente
-      const { error } = await supabase
-        .from("assignments")
-        .update({
-          title: newAssignment.title,
-          attempts: newAssignment.attempts,
-          problem_description: newAssignment.problem_description,
-          correct_answer: newAssignment.correct_answer,
-          image_url: newAssignment.image_url,
-        })
-        .eq("id", newAssignment.id);
-      if (error) console.log(error);
+    const { error } = await supabase.from("assignments").insert([newAssignment]);
+    if (error) console.log(error);
+    else {
+      setNewAssignment({
+        id: "",
+        class_id: "",
+        title: "",
+        attempts: 1,
+        problem_description: "",
+        correct_answer: "",
+        image_url: "",
+      });
+      fetchAssignments();
+      alert("Asignación creada correctamente");
     }
-    setNewAssignment({
-      id: "",
-      class_id: "",
-      title: "",
-      attempts: 1,
-      problem_description: "",
-      correct_answer: "",
-      image_url: "",
-    });
-    fetchAssignments();
   };
 
   const handleEditAssignment = (assignment: Assignment) => {
@@ -244,6 +231,10 @@ export default function TeacherPage() {
 
   const selectStyle: React.CSSProperties = { padding: "8px", borderRadius: "6px", border: "1px solid #ccc" };
 
+  const inputStyle: React.CSSProperties = { flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #ccc" };
+
+  const buttonStyle: React.CSSProperties = { padding: "8px 16px", borderRadius: "6px" };
+
   return (
     <div style={containerStyle}>
       <h1>Panel Docente</h1>
@@ -257,9 +248,9 @@ export default function TeacherPage() {
             placeholder="Nombre de la clase"
             value={newClassName}
             onChange={(e) => setNewClassName(e.target.value)}
-            style={{ flex: 1 }}
+            style={inputStyle}
           />
-          <button className="cta-button" onClick={createClass}>
+          <button className="cta-button" style={buttonStyle} onClick={createClass}>
             Crear Clase
           </button>
         </div>
@@ -285,15 +276,15 @@ export default function TeacherPage() {
               </option>
             ))}
           </select>
-          <button className="cta-button" onClick={addParticipant}>
+          <button className="cta-button" style={buttonStyle} onClick={addParticipant}>
             Añadir
           </button>
         </div>
       </div>
 
-      {/* ===== Crear / Editar Asignación ===== */}
+      {/* ===== Crear Asignación ===== */}
       <div style={cardStyle}>
-        <h2>Crear / Editar Asignación</h2>
+        <h2>Crear Asignación</h2>
         <select
           style={selectStyle}
           value={newAssignment.class_id || ""}
@@ -337,9 +328,9 @@ export default function TeacherPage() {
             handleAssignmentInput("image_url", url);
           }}
         />
-        {newAssignment.image_url && <img src={newAssignment.image_url} alt="RA" style={{ width: "200px" }} />}
-        <button className="cta-button" onClick={saveAssignment}>
-          Guardar Asignación
+        {newAssignment.image_url && <img src={newAssignment.image_url} alt="RA" style={{ width: "100px" }} />}
+        <button className="cta-button" style={buttonStyle} onClick={saveAssignment}>
+          Crear Asignación
         </button>
       </div>
 
@@ -351,6 +342,7 @@ export default function TeacherPage() {
             <tr>
               <th style={thStyle}>Título</th>
               <th style={thStyle}>Clase</th>
+              <th style={thStyle}>Imagen</th>
               <th style={thStyle}>Acciones</th>
             </tr>
           </thead>
@@ -360,15 +352,20 @@ export default function TeacherPage() {
                 <td style={tdStyle}>{a.title}</td>
                 <td style={tdStyle}>{classes.find((c) => c.id === a.class_id)?.name || ""}</td>
                 <td style={tdStyle}>
-                  <button className="cta-button" onClick={() => handleEditAssignment(a)}>
-                    Editar
-                  </button>
-                  <button className="cta-button" onClick={() => handleDeleteAssignment(a.id)}>
-                    Eliminar
-                  </button>
-                  <button className="cta-button" onClick={() => handleReviewAssignment(a.id)}>
-                    Revisar
-                  </button>
+                  {a.image_url && <img src={a.image_url} alt="RA" style={{ width: "60px" }} />}
+                </td>
+                <td style={tdStyle}>
+                  <div style={{ display: "flex", gap: "5px" }}>
+                    <button className="cta-button" onClick={() => handleEditAssignment(a)}>
+                      Editar
+                    </button>
+                    <button className="cta-button" onClick={() => handleDeleteAssignment(a.id)}>
+                      Eliminar
+                    </button>
+                    <button className="cta-button" onClick={() => handleReviewAssignment(a.id)}>
+                      Revisar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -405,4 +402,3 @@ export default function TeacherPage() {
     </div>
   );
 }
-
