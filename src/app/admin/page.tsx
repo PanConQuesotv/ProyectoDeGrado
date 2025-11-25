@@ -3,212 +3,242 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+interface Profile {
+  id: string;
+  email: string;
+  display_name: string;
+  role: string;
+}
+
+interface Class {
+  id: string;
+  name: string;
+  created_by: string;
+}
+
 export default function AdminPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [newClassName, setNewClassName] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    const { data: profiles } = await supabase.from("profiles").select("*");
-    const { data: classData } = await supabase.from("classes").select("*");
-    if (profiles) setUsers(profiles);
-    if (classData) setClasses(classData);
+  // Cargar usuarios
+  const fetchUsers = async () => {
+    const { data, error } = await supabase.from("profiles").select("*");
+    if (error) console.log(error);
+    else setUsers(data);
+  };
+
+  // Cargar clases
+  const fetchClasses = async () => {
+    const { data, error } = await supabase.from("classes").select("*");
+    if (error) console.log(error);
+    else setClasses(data);
   };
 
   useEffect(() => {
-    fetchData();
+    fetchUsers();
+    fetchClasses();
   }, []);
 
-  const handleChangeRole = async (userId: string, newRole: string) => {
-    setLoading(true);
-    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
-    if (error) setMessage(error.message);
-    else setMessage("Rol actualizado correctamente.");
-    setLoading(false);
-    fetchData();
+  // Cambiar rol de usuario
+  const changeRole = async (userId: string, newRole: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", userId);
+    if (error) console.log(error);
+    else fetchUsers();
   };
 
-  const handleCreateClass = async () => {
+  // Crear clase
+  const createClass = async () => {
     if (!newClassName) return;
-    setLoading(true);
-    const { error } = await supabase.from("classes").insert([{ name: newClassName }]);
-    if (error) setMessage(error.message);
-    else setMessage("Clase creada correctamente.");
-    setNewClassName("");
-    setLoading(false);
-    fetchData();
-  };
-
-  const handleAddParticipant = async () => {
-    if (!selectedClass || !selectedUserId) return;
-    setLoading(true);
-    const { error } = await supabase.from("class_participants").insert([
-      { class_id: selectedClass, user_id: selectedUserId },
+    const user = await supabase.auth.getUser();
+    const { error } = await supabase.from("classes").insert([
+      {
+        name: newClassName,
+        created_by: user.data.user?.id,
+      },
     ]);
-    if (error) setMessage(error.message);
-    else setMessage("Participante añadido correctamente.");
-    setLoading(false);
+    if (error) console.log(error);
+    else {
+      setNewClassName("");
+      fetchClasses();
+    }
   };
 
-  const inputStyle = {
-    padding: "8px 12px",
-    margin: "5px 0",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    width: "100%",
-    boxSizing: "border-box",
+  // Añadir participante
+  const addParticipant = async () => {
+    if (!selectedClass || !selectedUser) return;
+    const { error } = await supabase.from("class_participants").insert([
+      {
+        class_id: selectedClass,
+        user_id: selectedUser,
+      },
+    ]);
+    if (error) console.log(error);
+    else {
+      setSelectedClass(null);
+      setSelectedUser(null);
+      alert("Participante añadido");
+    }
   };
 
-  const selectStyle = {
-    padding: "8px 12px",
-    margin: "5px 0",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    width: "100%",
-    boxSizing: "border-box",
+  // ======= Estilos =======
+  const containerStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif",
   };
 
-  const tableStyle = {
+  const cardStyle: React.CSSProperties = {
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    width: "90%",
+    maxWidth: "900px",
+    marginBottom: "20px",
+  };
+
+  const tableStyle: React.CSSProperties = {
     width: "100%",
     borderCollapse: "collapse",
     marginBottom: "20px",
   };
 
-  const thStyle = {
+  const thStyle: React.CSSProperties = {
     borderBottom: "2px solid #ddd",
     padding: "8px",
     textAlign: "left",
+    background: "#f4f4f4",
   };
 
-  const tdStyle = {
+  const tdStyle: React.CSSProperties = {
     borderBottom: "1px solid #eee",
     padding: "8px",
   };
 
+  const inputStyle: React.CSSProperties = {
+    padding: "8px",
+    marginRight: "8px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    padding: "8px 12px",
+    margin: "4px",
+    borderRadius: "6px",
+    border: "none",
+    cursor: "pointer",
+    backgroundColor: "#0b5ed7",
+    color: "#fff",
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+    marginRight: "8px",
+  };
+
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 900,
-          background: "#fff",
-          padding: 25,
-          borderRadius: 12,
-          boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h1 style={{ textAlign: "center", marginBottom: 20 }}>Panel de Admin</h1>
-        {message && <p style={{ color: "green", textAlign: "center" }}>{message}</p>}
+    <div style={containerStyle}>
+      <h1>Panel de Administrador</h1>
 
-        <section>
-          <h2>Usuarios</h2>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Nombre</th>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Rol</th>
-                <th style={thStyle}>Cambiar Rol</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u, idx) => (
-                <tr key={u.id} style={{ backgroundColor: idx % 2 === 0 ? "#f9f9f9" : "#fff" }}>
-                  <td style={tdStyle}>{u.display_name}</td>
-                  <td style={tdStyle}>{u.email}</td>
-                  <td style={tdStyle}>{u.role}</td>
-                  <td style={tdStyle}>
-                    <select
-                      style={selectStyle}
-                      value={u.role}
-                      onChange={(e) => handleChangeRole(u.id, e.target.value)}
-                      disabled={loading}
-                    >
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section>
-          <h2>Crear Clase</h2>
-          <input
-            type="text"
-            placeholder="Nombre de la clase"
-            value={newClassName}
-            onChange={(e) => setNewClassName(e.target.value)}
-            style={inputStyle}
-          />
-          <button
-            onClick={handleCreateClass}
-            disabled={loading}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "#0b2f26",
-              color: "#fff",
-              cursor: "pointer",
-              marginTop: 10,
-            }}
-          >
-            Crear Clase
-          </button>
-        </section>
-
-        <section>
-          <h2>Añadir Participante a Clase</h2>
-          <select
-            value={selectedClass || ""}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="">Selecciona una clase</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedUserId || ""}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="">Selecciona un usuario</option>
+      {/* ===== Usuarios ===== */}
+      <div style={cardStyle}>
+        <h2>Usuarios</h2>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Nombre</th>
+              <th style={thStyle}>Email</th>
+              <th style={thStyle}>Rol</th>
+              <th style={thStyle}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
             {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.display_name} ({u.email})
-              </option>
+              <tr key={u.id}>
+                <td style={tdStyle}>{u.display_name}</td>
+                <td style={tdStyle}>{u.email}</td>
+                <td style={tdStyle}>{u.role}</td>
+                <td style={tdStyle}>
+                  <button
+                    style={buttonStyle}
+                    onClick={() =>
+                      changeRole(
+                        u.id,
+                        u.role === "estudiante"
+                          ? "teacher"
+                          : u.role === "teacher"
+                          ? "admin"
+                          : "estudiante"
+                      )
+                    }
+                  >
+                    Cambiar Rol
+                  </button>
+                </td>
+              </tr>
             ))}
-          </select>
+          </tbody>
+        </table>
+      </div>
 
-          <button
-            onClick={handleAddParticipant}
-            disabled={loading}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "#0b2f26",
-              color: "#fff",
-              cursor: "pointer",
-              marginTop: 10,
-            }}
-          >
-            Añadir
-          </button>
-        </section>
+      {/* ===== Crear Clase ===== */}
+      <div style={cardStyle}>
+        <h2>Crear Clase</h2>
+        <input
+          style={inputStyle}
+          type="text"
+          placeholder="Nombre de la clase"
+          value={newClassName}
+          onChange={(e) => setNewClassName(e.target.value)}
+        />
+        <button style={buttonStyle} onClick={createClass}>
+          Crear Clase
+        </button>
+      </div>
+
+      {/* ===== Añadir Participante ===== */}
+      <div style={cardStyle}>
+        <h2>Añadir Participante a Clase</h2>
+        <select
+          style={selectStyle}
+          value={selectedClass || ""}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
+          <option value="">Selecciona Clase</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          style={selectStyle}
+          value={selectedUser || ""}
+          onChange={(e) => setSelectedUser(e.target.value)}
+        >
+          <option value="">Selecciona Usuario</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.display_name}
+            </option>
+          ))}
+        </select>
+
+        <button style={buttonStyle} onClick={addParticipant}>
+          Añadir
+        </button>
       </div>
     </div>
   );
